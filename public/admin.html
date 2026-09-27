@@ -18,6 +18,7 @@
     <form id="gateForm" autocomplete="off">
       <label>管理员用户名<input name="username" required maxlength="24" autocomplete="username" /></label>
       <label>密码<input name="password" type="password" required autocomplete="current-password" /></label>
+      <label id="setupTokenRow" class="hidden">初始化令牌<input name="setupToken" type="password" autocomplete="off" /></label>
       <p class="form-error" id="gateError"></p>
       <button class="btn primary block" type="submit" id="gateSubmit">登录</button>
     </form>

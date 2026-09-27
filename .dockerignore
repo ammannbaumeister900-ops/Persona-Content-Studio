@@ -1,0 +1,10 @@
+.git
+.env
+node_modules
+data
+secrets
+certbot
+dsapikey.md
+*.pem
+*.key
+*.log

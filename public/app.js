@@ -127,12 +127,15 @@ async function api(path, options = {}) {
 
 /* ---------------- 启动 ---------------- */
 (async function boot() {
-  // 从落地页带 ?signup=1 过来的，直接停在注册页
-  if (new URLSearchParams(location.search).get('signup')) {
-    document.querySelector('#authTabs [data-mode="register"]')?.click();
-  }
+  const signupRequested = new URLSearchParams(location.search).get('signup');
   const [{ user }, meta] = await Promise.all([api('/me'), api('/meta')]);
   state.meta = meta;
+  const registerTab = document.querySelector('#authTabs [data-mode="register"]');
+  registerTab?.classList.toggle('hidden', !meta.registrationOpen);
+  if (signupRequested && meta.registrationOpen) registerTab?.click();
+  if (!meta.registrationOpen && authMode === 'register') {
+    document.querySelector('#authTabs [data-mode="login"]')?.click();
+  }
   fillSelects(meta);
   showLlm(meta.llm);
   user ? enterApp(user) : el.auth.classList.remove('hidden');

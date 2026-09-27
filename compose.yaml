@@ -1,0 +1,39 @@
+services:
+  app:
+    build: .
+    image: ip-studio:20260927
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      HOST: 0.0.0.0
+      PORT: 5177
+      DB_PATH: /app/data/app.db
+      LLM_PROVIDER: openai
+      PAY_PROVIDER: disabled
+      ADMIN_SETUP_TOKEN: ${ADMIN_SETUP_TOKEN:?Set ADMIN_SETUP_TOKEN in .env}
+      SECRET_KEY: ${SECRET_KEY:?Set SECRET_KEY in .env}
+    volumes:
+      - ./data:/app/data
+      - ./secrets/dsapikey.md:/app/dsapikey.md:ro
+    expose:
+      - "5177"
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:5177/api/meta').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+  proxy:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    depends_on:
+      app:
+        condition: service_healthy
+    environment:
+      PUBLIC_IP: ${PUBLIC_IP:?Set PUBLIC_IP in .env}
+    ports:
+      - "789:443"
+    volumes:
+      - ./deploy/nginx/default.conf.template:/etc/nginx/templates/default.conf.template:ro
+      - ./certbot:/etc/letsencrypt:ro

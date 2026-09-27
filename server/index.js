@@ -19,6 +19,7 @@ setUsageSink((e) => {
 
 const PUBLIC_DIR = fromRoot('public');
 const PORT = Number(process.env.PORT) || 5177;
+const HOST = process.env.HOST || (process.env.NODE_ENV === 'production' ? '127.0.0.1' : undefined);
 const MAX_BODY = 256 * 1024;
 
 const ROUTES = [
@@ -228,8 +229,8 @@ async function serveStatic(path, res) {
   }
 }
 
-server.listen(PORT, () => {
+server.listen(PORT, HOST, () => {
   const info = providerInfo();
-  console.log(`\n  文案工坊 已启动  →  http://localhost:${PORT}`);
+  console.log(`\n  文案工坊 已启动  →  http://${HOST || 'localhost'}:${PORT}`);
   console.log(`  模型通道：${info.label}${info.live ? `（${info.model}）` : ' —— 复制 .env.example 为 .env 并填入密钥即可接入真实模型'}\n`);
 });

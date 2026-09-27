@@ -1,4 +1,5 @@
 /* API 处理函数 */
+import { timingSafeEqual } from 'node:crypto';
 import { mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { resolve as resolvePath } from 'node:path';
 import {
@@ -141,6 +142,9 @@ function resolvePersona(userId, personaId) {
 /* ---------------- 账号 ---------------- */
 
 export async function handleRegister(req, res, body) {
+  if (process.env.NODE_ENV === 'production' && process.env.ALLOW_PUBLIC_REGISTRATION !== '1') {
+    throw new HttpError(403, '当前暂停新用户注册');
+  }
   const { username, password } = body || {};
   const bad = validateCredentials(username, password);
   if (bad) throw new HttpError(400, bad);
@@ -169,6 +173,7 @@ export async function handleMeta(req, res) {
     platforms: Object.entries(PLATFORMS).map(([key, v]) => ({ key, label: v.label, length: v.length })),
     tones: Object.entries(TONES).map(([key, hint]) => ({ key, hint })),
     llm: providerInfo(),
+    registrationOpen: process.env.NODE_ENV !== 'production' || process.env.ALLOW_PUBLIC_REGISTRATION === '1',
   });
 }
 
@@ -187,12 +192,23 @@ export async function handleAdminSession(req, res) {
   json(res, 200, {
     admin: admin ? publicAdmin(admin) : null,
     needsSetup: adminSetupNeeded(),
+    setupTokenRequired: process.env.NODE_ENV === 'production',
   });
 }
 
 /* 首次设置：只在一个管理员都没有的时候开放 */
 export async function handleAdminSetup(req, res, body) {
   if (!adminSetupNeeded()) throw new HttpError(403, '管理员已存在，无法再次初始化');
+  if (process.env.NODE_ENV === 'production') {
+    const expected = process.env.ADMIN_SETUP_TOKEN || '';
+    if (!expected) throw new HttpError(503, '生产环境尚未配置管理员初始化令牌');
+    const supplied = String(body?.setupToken || '');
+    const a = Buffer.from(supplied);
+    const b = Buffer.from(expected);
+    if (a.length !== b.length || !timingSafeEqual(a, b)) {
+      throw new HttpError(403, '管理员初始化令牌无效');
+    }
+  }
   const { username, password } = body || {};
   // 先查长度，免得报出前台那套「至少 6 位」和后台表单写的 8 位对不上
   if (String(password || '').length < 8) throw new HttpError(400, '管理员密码至少 8 位');
@@ -1955,6 +1971,7 @@ export async function handlePayInfo(req, res) {
 
 export async function handleOrderCreate(req, res, body) {
   const user = requireUser(req);
+  if (payInfo().provider === 'disabled') throw new HttpError(403, '支付暂未开放');
   const channel = ['wechat', 'alipay'].includes(body?.channel) ? body.channel : 'mock';
 
   // 价格一律从服务端的表里查——信任前端传来的金额，等于一分钱买 Max

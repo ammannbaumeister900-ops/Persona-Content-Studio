@@ -18,23 +18,26 @@ import { conf } from './settings.js';
 
 /* 配置走 conf()：环境变量优先，后台填的存加密库里兜底。
    每次读而不是缓存——后台改完立刻生效，不用重启。 */
-const cfg = () => ({
-  provider: (conf('PAY_PROVIDER') || 'mock').toLowerCase(),
-  notifyBase: conf('PAY_NOTIFY_BASE'),                // 回调地址的公网前缀
-  wx: {
-    mchid: conf('WX_MCHID'),
-    appid: conf('WX_APPID'),
-    serial: conf('WX_CERT_SERIAL'),
-    key: conf('WX_API_V3_KEY'),
-    privateKey: conf('WX_PRIVATE_KEY'),
-  },
-  ali: {
-    appId: conf('ALI_APP_ID'),
-    privateKey: conf('ALI_PRIVATE_KEY'),
-    publicKey: conf('ALI_PUBLIC_KEY'),
-  },
-  mockSecret: process.env.PAY_MOCK_SECRET || 'dev-only',
-});
+const cfg = () => {
+  const chosen = (conf('PAY_PROVIDER') || 'mock').toLowerCase();
+  return {
+    provider: process.env.NODE_ENV === 'production' && chosen === 'mock' ? 'disabled' : chosen,
+    notifyBase: conf('PAY_NOTIFY_BASE'),                // 回调地址的公网前缀
+    wx: {
+      mchid: conf('WX_MCHID'),
+      appid: conf('WX_APPID'),
+      serial: conf('WX_CERT_SERIAL'),
+      key: conf('WX_API_V3_KEY'),
+      privateKey: conf('WX_PRIVATE_KEY'),
+    },
+    ali: {
+      appId: conf('ALI_APP_ID'),
+      privateKey: conf('ALI_PRIVATE_KEY'),
+      publicKey: conf('ALI_PUBLIC_KEY'),
+    },
+    mockSecret: process.env.PAY_MOCK_SECRET || 'dev-only',
+  };
+};
 
 export function payInfo() {
   const c = cfg();
@@ -44,14 +47,16 @@ export function payInfo() {
   };
   return {
     provider: c.provider,
-    live: c.provider !== 'mock',
+    live: c.provider === 'wechat' || c.provider === 'alipay',
     channels: [
       { key: 'wechat', label: '微信支付', ready: ready.wechat },
       { key: 'alipay', label: '支付宝', ready: ready.alipay },
     ],
-    note: c.provider === 'mock'
-      ? '演示模式：不会真的扣款，用来把下单→支付→发货整条流程跑通。'
-      : '扫码支付。付款后页面会自动刷新套餐，最多等十几秒。',
+    note: c.provider === 'disabled'
+      ? '支付暂未开放。'
+      : c.provider === 'mock'
+        ? '演示模式：不会真的扣款，用来把下单→支付→发货整条流程跑通。'
+        : '扫码支付。付款后页面会自动刷新套餐，最多等十几秒。',
   };
 }
 
@@ -62,6 +67,7 @@ export const newTradeNo = () =>
 /* 下单，返回给前端用来出二维码的字符串 */
 export async function createPayment({ channel, no, amount, subject }) {
   const c = cfg();
+  if (c.provider === 'disabled') throw new Error('支付暂未开放');
   if (c.provider === 'mock') {
     // 假支付：给一个能直接点的"我付好了"链接，签名防止别人替你付
     return { codeUrl: `mock://pay/${no}`, mock: true, mockToken: mockSign(no, amount) };
@@ -147,6 +153,7 @@ async function alipayFace(c, { no, amount, subject }) {
    **验签失败一律当作伪造丢弃**——这是整个支付里最不能省的一步。 */
 export function verifyNotify(channel, { headers, rawBody, query }) {
   const c = cfg();
+  if (c.provider === 'disabled') return null;
   if (c.provider === 'mock') {
     const token = query?.get?.('token') || '';
     const no = query?.get?.('no') || '';

@@ -4,6 +4,7 @@ import { Users, Sessions, Admins, AdminSessions } from './db.js';
 
 const SESSION_TTL = 1000 * 60 * 60 * 24 * 14; // 14 天
 export const COOKIE_NAME = 'cw_session';
+const SECURE_COOKIE = process.env.NODE_ENV === 'production' ? '; Secure' : '';
 
 function hashPassword(password, salt = randomBytes(16).toString('hex')) {
   const key = scryptSync(password, salt, 64).toString('hex');
@@ -46,10 +47,10 @@ export function startSession(user) {
 
 export function sessionCookie(token) {
   const maxAge = Math.floor(SESSION_TTL / 1000);
-  return `${COOKIE_NAME}=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAge}`;
+  return `${COOKIE_NAME}=${token}; Path=/; HttpOnly; SameSite=Lax${SECURE_COOKIE}; Max-Age=${maxAge}`;
 }
 
-export const clearCookie = () => `${COOKIE_NAME}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0`;
+export const clearCookie = () => `${COOKIE_NAME}=; Path=/; HttpOnly; SameSite=Lax${SECURE_COOKIE}; Max-Age=0`;
 
 function readCookie(req, name) {
   const raw = req.headers.cookie || '';
@@ -97,9 +98,9 @@ export function startAdminSession(admin) {
 }
 
 export const adminCookie = (token) =>
-  `${ADMIN_COOKIE}=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${Math.floor(ADMIN_TTL / 1000)}`;
+  `${ADMIN_COOKIE}=${token}; Path=/; HttpOnly; SameSite=Lax${SECURE_COOKIE}; Max-Age=${Math.floor(ADMIN_TTL / 1000)}`;
 
-export const clearAdminCookie = () => `${ADMIN_COOKIE}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0`;
+export const clearAdminCookie = () => `${ADMIN_COOKIE}=; Path=/; HttpOnly; SameSite=Lax${SECURE_COOKIE}; Max-Age=0`;
 
 export function currentAdmin(req) {
   return AdminSessions.admin(readCookie(req, ADMIN_COOKIE));

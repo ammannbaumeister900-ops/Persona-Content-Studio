@@ -4,7 +4,7 @@ import { fromRoot } from './paths.js';
 
 export function loadEnv(file = fromRoot('.env')) {
   let raw;
-  try { raw = readFileSync(file, 'utf8'); } catch { return; }
+  try { raw = readFileSync(file, 'utf8'); } catch { raw = ''; }
   for (const line of raw.split('\n')) {
     const t = line.trim();
     if (!t || t.startsWith('#')) continue;
@@ -16,5 +16,12 @@ export function loadEnv(file = fromRoot('.env')) {
       value = value.slice(1, -1);
     }
     if (!(key in process.env)) process.env[key] = value;
+  }
+
+  // 本地 DeepSeek 密钥文件：环境变量和 .env 的配置优先。
+  if (!process.env.OPENAI_API_KEY && !process.env.LLM_API_KEY) {
+    let key;
+    try { key = readFileSync(fromRoot('dsapikey.md'), 'utf8').trim(); } catch { return; }
+    if (/^sk-[A-Za-z0-9_-]+$/.test(key)) process.env.OPENAI_API_KEY = key;
   }
 }

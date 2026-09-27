@@ -1,0 +1,10 @@
+[Unit]
+Description=Back up IP Studio data daily
+
+[Timer]
+OnCalendar=*-*-* 02:00:00
+Persistent=true
+Unit=ip-studio-backup.service
+
+[Install]
+WantedBy=timers.target

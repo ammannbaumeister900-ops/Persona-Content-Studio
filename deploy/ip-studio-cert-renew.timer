@@ -1,0 +1,10 @@
+[Unit]
+Description=Renew IP Studio HTTPS certificate daily
+
+[Timer]
+OnCalendar=*-*-* 03:15:00
+Persistent=true
+Unit=ip-studio-cert-renew.service
+
+[Install]
+WantedBy=timers.target

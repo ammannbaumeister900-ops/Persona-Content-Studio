@@ -1,0 +1,13 @@
+server {
+    listen 80;
+    server_name __PUBLIC_IP__;
+
+    location /.well-known/acme-challenge/ {
+        root /var/www/html;
+        default_type text/plain;
+    }
+
+    location / {
+        return 302 https://__PUBLIC_IP__:789$request_uri;
+    }
+}

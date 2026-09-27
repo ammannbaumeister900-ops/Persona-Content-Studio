@@ -3,7 +3,7 @@
 const $ = (id) => document.getElementById(id);
 const el = {
   gate: $('gate'), gateForm: $('gateForm'), gateError: $('gateError'),
-  gateSubmit: $('gateSubmit'), gateSub: $('gateSub'),
+  gateSubmit: $('gateSubmit'), gateSub: $('gateSub'), setupTokenRow: $('setupTokenRow'),
   panel: $('panel'), adminName: $('adminName'), logoutBtn: $('logoutBtn'), llmChip: $('llmChip'),
   days: $('days'), refreshBtn: $('refreshBtn'), stats: $('stats'), spark: $('spark'),
   costTable: $('costTable'), costNote: $('costNote'), adminNav: $('adminNav'),
@@ -67,7 +67,7 @@ function toast(msg) {
 /* ---------------- 入口判定 ---------------- */
 (async function boot() {
   try {
-    const { admin, needsSetup } = await api('/admin/session');
+    const { admin, needsSetup, setupTokenRequired } = await api('/admin/session');
     if (admin) return enter(admin);
     setupMode = needsSetup;
     if (needsSetup) {
@@ -75,6 +75,8 @@ function toast(msg) {
       el.gateSubmit.textContent = '创建管理员';
       el.gateForm.password.autocomplete = 'new-password';
       el.gateForm.password.placeholder = '至少 8 位';
+      el.setupTokenRow.classList.toggle('hidden', !setupTokenRequired);
+      el.gateForm.setupToken.required = Boolean(setupTokenRequired);
     }
     el.gate.classList.remove('hidden');
   } catch (err) {
@@ -91,7 +93,10 @@ el.gateForm.addEventListener('submit', async (e) => {
   try {
     const { admin } = await api(setupMode ? '/admin/setup' : '/admin/login', {
       method: 'POST',
-      body: { username: fd.get('username'), password: fd.get('password') },
+      body: {
+        username: fd.get('username'), password: fd.get('password'),
+        ...(setupMode ? { setupToken: fd.get('setupToken') } : {}),
+      },
     });
     el.gate.classList.add('hidden');
     enter(admin);
